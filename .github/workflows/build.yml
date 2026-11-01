@@ -1,0 +1,57 @@
+name: Build ORLI APKs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.edition }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        edition: [lite, pro]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android platform
+        run: flutter create --platforms=android --org com.orli --project-name orli .
+
+      - name: Configure separate app IDs
+        run: python3 tool/configure_flavors.py
+
+      - name: Install packages
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --release --flavor ${{ matrix.edition }} --dart-define=ORLI_EDITION=${{ matrix.edition }}
+
+      - name: Rename APK
+        run: cp build/app/outputs/flutter-apk/app-${{ matrix.edition }}-release.apk ORLI-${{ matrix.edition }}.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ORLI-${{ matrix.edition }}-APK
+          path: ORLI-${{ matrix.edition }}.apk
+          if-no-files-found: error
+          
