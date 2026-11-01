@@ -9,14 +9,23 @@ if not gradle.exists():
 
 text = gradle.read_text()
 
-if "flavorDimensions" not in text:
+if "resValues = true" not in text:
     marker = "android {"
 
     if marker not in text:
-        raise SystemExit(
-            "Could not find android block in app/build.gradle.kts"
-        )
+        raise SystemExit("Could not find android block.")
 
+    text = text.replace(
+        marker,
+        marker + """
+    buildFeatures {
+        resValues = true
+    }
+""",
+        1
+    )
+
+if "flavorDimensions" not in text:
     flavor_block = '''
     flavorDimensions += "edition"
     productFlavors {
@@ -32,6 +41,6 @@ if "flavorDimensions" not in text:
         }
     }
 '''
+    text = text.replace("android {", "android {" + flavor_block, 1)
 
-    text = text.replace(marker, marker + flavor_block, 1)
-    gradle.write_text(text)
+gradle.write_text(text)
